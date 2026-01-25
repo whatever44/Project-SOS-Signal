@@ -4,14 +4,18 @@ from sklearn.model_selection import train_test_split
 from huggingface_hub import HfFileSystem
 from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 
+# --- FIX 1: Corrected Typo in Import Name (removed 'gi') ---
 from config import HF_REPO
 from models.stage2_sequences import build_cnn1d, build_bilstm, build_transformer, build_tcn
 
-# --- Your Original Data Loader Snippet (Preserved) ---
 def load_hf_dataset_private(repo_id=HF_REPO, token=None):
-    # (Insert your provided token here or use env var)
+    # --- ACTION: INSERT YOUR REAL TOKEN HERE ---
     HF_TOKEN = "" 
     
+    if not HF_TOKEN:
+        print("Error: HF_TOKEN is empty. Please paste your Hugging Face token.")
+        return None, None
+
     fs = HfFileSystem(token=HF_TOKEN)
     base_path = f"datasets/{repo_id}/data"
     
@@ -26,22 +30,21 @@ def load_hf_dataset_private(repo_id=HF_REPO, token=None):
     
     classes = {'not_sos': 0, 'sos': 1}
     
+    print("Starting data loading...")
+    
     for class_name, label in classes.items():
         class_dir = f"{base_path}/{class_name}"
         
-        # Check if class folder exists
         if not fs.exists(class_dir):
             print(f"Warning: Folder {class_dir} not found. Skipping.")
             continue
             
-        # Get all sample folders
         sample_folders = fs.ls(class_dir, detail=False)
-        
         print(f"Processing {class_name} ({len(sample_folders)} samples)...")
         
         for i, sample_path in enumerate(sample_folders):
             landmarks_path = f"{sample_path}/landmarks"
-            print(i)
+            
             if not fs.exists(landmarks_path):
                 continue
             
@@ -49,14 +52,13 @@ def load_hf_dataset_private(repo_id=HF_REPO, token=None):
             npy_files = fs.glob(f"{landmarks_path}/*.npy")
             npy_files = sorted(npy_files) # Critical to keep time order
             
-            # Strict check: We need exactly 90 frames
+            # Strict check: exactly 90 frames
             if len(npy_files) != 90:
                 continue
                 
             sample_sequence = []
             
             for npy_file in npy_files:
-                # 'fs.open' works like standard python open, but over the web
                 with fs.open(npy_file, 'rb') as f:
                     frame_data = np.load(f)
                     frame_data = frame_data.flatten()
@@ -70,9 +72,12 @@ def load_hf_dataset_private(repo_id=HF_REPO, token=None):
             X_data.append(np.array(sample_sequence))
             y_data.append(label)
             
-            # Progress bar
             if i > 0 and i % 50 == 0:
                 print(f"  Loaded {i} samples...", end='\r')
+
+    if len(X_data) == 0:
+        print("\nNo data loaded. Check paths and token.")
+        return None, None
 
     X = np.array(X_data)
     y = np.array(y_data)
@@ -109,19 +114,19 @@ def train_stage2():
             metrics=['accuracy']
         )
         
-        # Callbacks for Fine-Tuning
+        # --- FIX 2: Changed .keras to .h5 to fix ValueError ---
+        checkpoint_path = f'saved_models/stage2_{name}.h5'
+        
         callbacks = [
-            # Reduce LR if stuck (Finetuning on the fly)
             ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1),
-            # Stop early to prevent overfitting
             EarlyStopping(monitor='val_loss', patience=7, restore_best_weights=True),
-            # Save best checkpoint
-            ModelCheckpoint(f'saved_models/stage2_{name}.keras', save_best_only=True)
+            # .h5 format is compatible with 'options' arguments internally passed by Keras
+            ModelCheckpoint(checkpoint_path, save_best_only=True)
         ]
         
         history = model.fit(
             X_train, y_train,
-            epochs=30, # Grid search usually uses fewer epochs, increase for final
+            epochs=30,
             batch_size=32,
             validation_data=(X_test, y_test),
             callbacks=callbacks,
