@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 hf.txt
+*.npy
 # C extensions
 *.so
 
