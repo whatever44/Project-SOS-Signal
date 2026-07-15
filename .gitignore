@@ -6,6 +6,8 @@ hf.txt
 *.npy
 # C extensions
 *.so
+CLAUDE.md
+.DS_Store
 
 # Distribution / packaging
 .Python
@@ -26,6 +28,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+Part_1/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
