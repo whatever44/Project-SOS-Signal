@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
+MODEL_DIR = DATA_DIR = Path(__file__).resolve().parent.parent / "models"
 CLASSES = ["not_sos", "sos"]   # label 0, label 1
 N_FRAMES = 90
 
@@ -91,5 +92,6 @@ model.fit(
 )
 
 # ---------- 4. Save ----------
-model.save("sos_lstm_model.keras")
-print("Model saved to sos_lstm_model.keras")
+model_path = MODEL_DIR / "sos_lstm_model.keras"
+model.save(model_path)
+print(f"Model saved to {model_path}")

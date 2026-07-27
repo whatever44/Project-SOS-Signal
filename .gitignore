@@ -29,6 +29,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 Part_1/
+models/
 logs/
 
 # PyInstaller
