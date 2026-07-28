@@ -5,7 +5,7 @@ import tensorflow as tf
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
-MODEL_DIR = DATA_DIR = Path(__file__).resolve().parent.parent / "models"
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 CLASSES = ["not_sos", "sos"]
 N_FRAMES = 90
 
@@ -29,6 +29,47 @@ def train_lstm(
               tf.keras.layers.Dense(1, activation="sigmoid"),
           ]
       )
+      model.compile(
+          optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
+          loss="binary_crossentropy",
+          metrics=["accuracy"],
+      )
+      tb_cb = tf.keras.callbacks.TensorBoard(
+          log_dir=PLOTS_DIR / f"lstm_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}",
+          histogram_freq=1,
+      )
+      es_cb = tf.keras.callbacks.EarlyStopping(
+          monitor="val_loss", patience=5, restore_best_weights=True
+      )
+      hist = model.fit(
+          X_tr,
+          y_tr,
+          validation_data=(X_val, y_val),
+          epochs=epochs,
+          batch_size=32,
+          callbacks=[tb_cb, es_cb],
+          verbose=0,
+      )
+      return model, hist.history
+
+def train_bilstm(
+      X_tr, y_tr, X_val, y_val,
+      units=(64, 32), lr=1e-3, epochs=50
+  ):
+      """
+      Train a *non‑bidirectional* (vanilla) LSTM model.
+      The architecture mirrors `train_bilstm` but uses a single
+      directional LSTM stack.
+      """
+      input_dim = X_tr.shape[2]
+      model = tf.keras.Sequential([
+              tf.keras.layers.Input(shape=(N_FRAMES, feature_dim)),
+              tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
+              tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+              tf.keras.layers.Dense(16, activation="relu"),
+              tf.keras.layers.Dense(1, activation="sigmoid"),
+          ])
+      
       model.compile(
           optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
           loss="binary_crossentropy",

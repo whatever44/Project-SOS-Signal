@@ -5,7 +5,7 @@ from pathlib import Path
 from sklearn.svm import SVC
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
-MODEL_DIR = DATA_DIR = Path(__file__).resolve().parent.parent / "models"
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 CLASSES = ["not_sos", "sos"]
 N_FRAMES = 90
 
