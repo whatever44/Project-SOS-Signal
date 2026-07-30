@@ -46,7 +46,7 @@ def load_split(split_name):
     return X, y
 
 
-if __name__ == "__main__":
+def grid_search_xgboost():
     X_train, y_train = load_split("train")
     X_test, y_test = load_split("test")
 
@@ -70,3 +70,6 @@ if __name__ == "__main__":
     model_path = MODEL_DIR / "xgboost_sos.model"
     joblib.dump(model, str(model_path))
     print(f"XGBoost model saved to {model_path}")
+
+    if __name__ == "__main__":
+        grid_search_xgboost()

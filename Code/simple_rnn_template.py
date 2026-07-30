@@ -45,7 +45,7 @@ def load_split(split_name):
     y = np.array(y, dtype=np.int32)
     return X, y
 
-
+def train_simple_rnn():
 if __name__ == "__main__":
     X_train, y_train = load_split("train")
     X_test, y_test = load_split("test")
@@ -86,3 +86,6 @@ if __name__ == "__main__":
     model_path = MODEL_DIR / "simple_rnn_sos_model.keras"
     model.save(model_path)
     print(f"Simple RNN model saved to {model_path}")
+
+if __name__ == "__main__":
+    train_simple_rnn()
