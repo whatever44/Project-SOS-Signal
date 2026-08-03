@@ -61,8 +61,8 @@ feature_dim = X_train.shape[2]
 
 model = tf.keras.Sequential([
     tf.keras.layers.Input(shape=(N_FRAMES, feature_dim)),
-    tf.keras.layers.LSTM(64, return_sequences=True),
-    tf.keras.layers.LSTM(32),
+    tf.keras.layers.LSTM(64, return_sequences=True, recurrent_dropout=0.0001),
+    tf.keras.layers.LSTM(32, recurrent_dropout=0.0001),
     tf.keras.layers.Dense(16, activation="relu"),
     tf.keras.layers.Dense(1, activation="sigmoid"),
 ])

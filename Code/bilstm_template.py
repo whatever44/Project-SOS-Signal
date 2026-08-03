@@ -3,12 +3,61 @@ import datetime
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from sklearn.metrics import f1_score
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+PLOTS_DIR = Path(__file__).resolve().parent.parent / "plots"
 CLASSES = ["not_sos", "sos"]
 N_FRAMES = 90
 
+def train_bilstm(
+    X_tr, y_tr, X_val, y_val,
+    units=(64, 32), lr=1e-3, epochs=50
+):
+    """
+    Train a Bidirectional LSTM model.
+    """
+    input_dim = X_tr.shape[2]
+    model = tf.keras.Sequential(
+        [
+            tf.keras.layers.Input(shape=(N_FRAMES, input_dim)),
+            tf.keras.layers.Bidirectional(
+                tf.keras.layers.LSTM(units[0], return_sequences=True, recurrent_dropout=0.0001)
+            ),
+            tf.keras.layers.Bidirectional(
+                tf.keras.layers.LSTM(units[1], recurrent_dropout=0.0001)
+            ),
+            tf.keras.layers.Dense(16, activation="relu"),
+            tf.keras.layers.Dense(1, activation="sigmoid"),
+        ]
+    )
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
+        loss="binary_crossentropy",
+        metrics=["accuracy"],
+    )
+    tb_cb = tf.keras.callbacks.TensorBoard(
+        log_dir=PLOTS_DIR / f"bilstm_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}",
+        histogram_freq=1,
+    )
+    es_cb = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=5, restore_best_weights=True
+    )
+    hist = model.fit(
+        X_tr, y_tr,
+        validation_data=(X_val, y_val),
+        epochs=epochs,
+        batch_size=32,
+        callbacks=[tb_cb, es_cb],
+        verbose=0,
+    )
+    history = hist.history
+    # model_comparison.py checks hist["f1"][-1] to pick the best config
+    val_prob = model.predict(X_val, verbose=0).ravel()
+    val_pred = (val_prob >= 0.5).astype(int)
+    history["f1"] = [f1_score(y_val, val_pred, zero_division=0)]
+    return model, history
 
 def train_lstm(
       X_tr, y_tr, X_val, y_val,
@@ -23,8 +72,8 @@ def train_lstm(
       model = tf.keras.Sequential(
           [
               tf.keras.layers.Input(shape=(N_FRAMES, input_dim)),
-              tf.keras.layers.LSTM(units[0], return_sequences=True),
-              tf.keras.layers.LSTM(units[1]),
+              tf.keras.layers.LSTM(units[0], return_sequences=True, recurrent_dropout=0.0001),
+              tf.keras.layers.LSTM(units[1], recurrent_dropout=0.0001),
               tf.keras.layers.Dense(16, activation="relu"),
               tf.keras.layers.Dense(1, activation="sigmoid"),
           ]
@@ -50,48 +99,12 @@ def train_lstm(
           callbacks=[tb_cb, es_cb],
           verbose=0,
       )
-      return model, hist.history
-
-def train_bilstm(
-      X_tr, y_tr, X_val, y_val,
-      units=(64, 32), lr=1e-3, epochs=50
-  ):
-      """
-      Train a *non‑bidirectional* (vanilla) LSTM model.
-      The architecture mirrors `train_bilstm` but uses a single
-      directional LSTM stack.
-      """
-      input_dim = X_tr.shape[2]
-      model = tf.keras.Sequential([
-              tf.keras.layers.Input(shape=(N_FRAMES, feature_dim)),
-              tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-              tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
-              tf.keras.layers.Dense(16, activation="relu"),
-              tf.keras.layers.Dense(1, activation="sigmoid"),
-          ])
-      
-      model.compile(
-          optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
-          loss="binary_crossentropy",
-          metrics=["accuracy"],
-      )
-      tb_cb = tf.keras.callbacks.TensorBoard(
-          log_dir=PLOTS_DIR / f"lstm_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}",
-          histogram_freq=1,
-      )
-      es_cb = tf.keras.callbacks.EarlyStopping(
-          monitor="val_loss", patience=5, restore_best_weights=True
-      )
-      hist = model.fit(
-          X_tr,
-          y_tr,
-          validation_data=(X_val, y_val),
-          epochs=epochs,
-          batch_size=32,
-          callbacks=[tb_cb, es_cb],
-          verbose=0,
-      )
-      return model, hist.history
+      history = hist.history
+      # model_comparison.py checks hist["f1"][-1] to pick the best config
+      val_prob = model.predict(X_val, verbose=0).ravel()
+      val_pred = (val_prob >= 0.5).astype(int)
+      history["f1"] = [f1_score(y_val, val_pred, zero_division=0)]
+      return model, history
 
 def load_split(split_name):
     folder_root = os.path.join(DATA_DIR, split_name)
@@ -138,8 +151,8 @@ if __name__ == "__main__":
 
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(N_FRAMES, feature_dim)),
-        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True)),
-        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32)),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=True, recurrent_dropout=0.0001)),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, recurrent_dropout=0.0001)),
         tf.keras.layers.Dense(16, activation="relu"),
         tf.keras.layers.Dense(1, activation="sigmoid"),
     ])

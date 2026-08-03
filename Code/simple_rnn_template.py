@@ -3,12 +3,54 @@ import datetime
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from sklearn.metrics import f1_score
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 CLASSES = ["not_sos", "sos"]
 N_FRAMES = 90
 
+def train_simple_rnn(
+    X_tr, y_tr, X_val, y_val,
+    units=(64, 32), lr=1e-3, epochs=50
+):
+    """
+    Train a Simple RNN model.
+    """
+    input_dim = X_tr.shape[2]
+    model = tf.keras.Sequential(
+        [
+            tf.keras.layers.Input(shape=(N_FRAMES, input_dim)),
+            tf.keras.layers.SimpleRNN(units[0], return_sequences=True, recurrent_dropout=0.0001),
+            tf.keras.layers.SimpleRNN(units[1], recurrent_dropout=0.0001),
+            tf.keras.layers.Dense(16, activation="relu"),
+            tf.keras.layers.Dense(1, activation="sigmoid"),
+        ]
+    )
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
+        loss="binary_crossentropy",
+        metrics=["accuracy"],
+    )
+    log_dir = Path("logs") / f"rnn_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}"
+    os.makedirs(log_dir, exist_ok=True)
+    tb_cb = tf.keras.callbacks.TensorBoard(log_dir=str(log_dir), histogram_freq=1)
+    es_cb = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=5, restore_best_weights=True
+    )
+    hist = model.fit(
+        X_tr, y_tr,
+        validation_data=(X_val, y_val),
+        epochs=epochs,
+        batch_size=32,
+        callbacks=[tb_cb, es_cb],
+        verbose=0,
+    )
+    history = hist.history
+    val_prob = model.predict(X_val, verbose=0).ravel()
+    val_pred = (val_prob >= 0.5).astype(int)
+    history["f1"] = [f1_score(y_val, val_pred, zero_division=0)]
+    return model, history
 
 def load_split(split_name):
     folder_root = os.path.join(DATA_DIR, split_name)
@@ -45,7 +87,7 @@ def load_split(split_name):
     y = np.array(y, dtype=np.int32)
     return X, y
 
-def train_simple_rnn():
+
 if __name__ == "__main__":
     X_train, y_train = load_split("train")
     X_test, y_test = load_split("test")
@@ -55,8 +97,8 @@ if __name__ == "__main__":
 
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(N_FRAMES, feature_dim)),
-        tf.keras.layers.SimpleRNN(64, return_sequences=True),
-        tf.keras.layers.SimpleRNN(32),
+        tf.keras.layers.SimpleRNN(64, return_sequences=True,recurrent_dropout=0.0001),
+        tf.keras.layers.SimpleRNN(32, recurrent_dropout=0.0001),
         tf.keras.layers.Dense(16, activation="relu"),
         tf.keras.layers.Dense(1, activation="sigmoid"),
     ])
@@ -86,6 +128,3 @@ if __name__ == "__main__":
     model_path = MODEL_DIR / "simple_rnn_sos_model.keras"
     model.save(model_path)
     print(f"Simple RNN model saved to {model_path}")
-
-if __name__ == "__main__":
-    train_simple_rnn()

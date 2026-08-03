@@ -24,6 +24,7 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+import tensorflow as tf 
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -96,10 +97,11 @@ def evaluate(model, X_tp, y_tp, model_type="sklearn"):
 # ------------------------------------------------------------------
 # 4. Plotting helpers
 # ------------------------------------------------------------------
-def plot_roc(metrics_dict, output_path):
+
+def plot_roc(y_true, metrics_dict, output_path):
     plt.figure(figsize=(8, 6))
     for name, m in metrics_dict.items():
-        fpr, tpr, _ = roc_curve(m["prob"], m["pred"])
+        fpr, tpr, _ = roc_curve(y_true, m["prob"])
         plt.plot(fpr, tpr, lw=2,
                 label=f"{name} (AUC={m['roc_auc']:.3f})")
     plt.plot([0, 1], [0, 1], "k--")
@@ -112,10 +114,10 @@ def plot_roc(metrics_dict, output_path):
     plt.close()
 
 
-def plot_precision_recall(metrics_dict, output_path):
+def plot_precision_recall(y_true, metrics_dict, output_path):
     plt.figure(figsize=(8, 6))
     for name, m in metrics_dict.items():
-        precision, recall, _ = precision_recall_curve(m["prob"], m["pred"])
+        precision, recall, _ = precision_recall_curve(y_true, m["prob"])
         plt.plot(recall, precision, lw=2, label=name)
     plt.title("Precision–Recall Curves")
     plt.xlabel("Recall")
@@ -246,6 +248,7 @@ def main():
     results["SVM"] = evaluate(svm_model, flat_test, y_test, "sklearn")
 
     rows = []
+    plot_rows = []
     n_test = len(y_test)
     for name, m in results.items():
         ci_acc = ci_accuracy(m["accuracy"], n_test)
@@ -259,7 +262,18 @@ def main():
                 "ROC AUC": f"{m['roc_auc']:.3f}",
             }
         )
+        plot_rows.append(
+            {
+                "Model": name,
+                "accuracy": m["accuracy"],
+                "precision": m["precision"],
+                "recall": m["recall"],
+                "f1": m["f1"],
+                "roc_auc": m["roc_auc"],
+            }
+        )
     summary_df = pd.DataFrame(rows)
+    plot_df = pd.DataFrame(plot_rows)
 
     md_path = RESULTS_DIR / "metrics_summary.md"
     md_path.write_text(summary_df.to_markdown(index=False))
@@ -270,12 +284,14 @@ def main():
     print("✅ Figure output → results/plots")
 
     plot_roc(
-        {k: {"prob": v["prob"], "pred": v["pred"]} for k, v in results.items()},
+        y_test,
+        results,
         PLOTS_DIR / "roc_curves.png",
     )
 
     plot_precision_recall(
-        {k: {"prob": v["prob"], "pred": v["pred"]} for k, v in results.items()},
+        y_test,
+        results,
         PLOTS_DIR / "precision_recall.png",
     )
 
@@ -287,7 +303,7 @@ def main():
         )
 
     plot_comparison_bar(
-        summary_df, PLOTS_DIR / "performance_comparison.png"
+        plot_df, PLOTS_DIR / "performance_comparison.png"
     )
 
     print("\nAll plots saved – ready to be embedded in your manuscript.")

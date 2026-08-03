@@ -3,12 +3,40 @@ import numpy as np
 import xgboost as xgb
 import joblib
 from pathlib import Path
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import roc_auc_score
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "split_data"
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 CLASSES = ["not_sos", "sos"]
 N_FRAMES = 90
 
+def grid_search_xgboost(X_train_flat, y_train, X_test_flat, y_test):
+    """
+    Grid search over key XGBoost hyperparameters, returns the best
+    fitted model, its params, and its test-set ROC AUC.
+    """
+    param_grid = {
+        "n_estimators": [100, 200],
+        "max_depth": [4, 6],
+        "learning_rate": [0.1, 0.05],
+    }
+    base_model = xgb.XGBClassifier(
+        objective="binary:logistic",
+        eval_metric="logloss",
+        n_jobs=-1,
+    )
+    grid = GridSearchCV(
+        base_model, param_grid,
+        scoring="roc_auc", cv=3, n_jobs=-1,
+    )
+    grid.fit(X_train_flat, y_train)
+
+    best_model = grid.best_estimator_
+    test_prob = best_model.predict_proba(X_test_flat)[:, 1]
+    best_auc = roc_auc_score(y_test, test_prob)
+
+    return best_model, grid.best_params_, best_auc
 
 def load_split(split_name):
     folder_root = os.path.join(DATA_DIR, split_name)
@@ -46,7 +74,7 @@ def load_split(split_name):
     return X, y
 
 
-def grid_search_xgboost():
+if __name__ == "__main__":
     X_train, y_train = load_split("train")
     X_test, y_test = load_split("test")
 
@@ -70,6 +98,3 @@ def grid_search_xgboost():
     model_path = MODEL_DIR / "xgboost_sos.model"
     joblib.dump(model, str(model_path))
     print(f"XGBoost model saved to {model_path}")
-
-    if __name__ == "__main__":
-        grid_search_xgboost()

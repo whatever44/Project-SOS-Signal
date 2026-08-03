@@ -8,8 +8,6 @@ hf.txt
 *.so
 CLAUDE.md
 .DS_Store
-/plots
-/results
 
 # Distribution / packaging
 .Python
