@@ -75,7 +75,7 @@ model.summary()
 log_dir = Path("logs") / f"lstm_{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
 os.makedirs(log_dir, exist_ok=True)
 try:
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=str(log_dir), histogram_freq=1)
+    tensorboard_cb = tf.keras.callbacks.TensorBoard(log_dir=Path("logs") / f"lstm_tb_lr{lr}_units{units[0]}_{units[1]}", histogram_freq=1)
 except Exception as e:
     print(f"TensorBoard not available ({e}). Using simple logging callback.")
     class DummyTensorBoard(tf.keras.callbacks.Callback):

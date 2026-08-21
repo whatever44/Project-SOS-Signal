@@ -38,7 +38,8 @@ def train_bilstm(
         metrics=["accuracy"],
     )
     tb_cb = tf.keras.callbacks.TensorBoard(
-        log_dir=PLOTS_DIR / f"bilstm_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}",
+        log_dir=PLOTS_DIR /
+    f"bilstm_tb_lr{lr}_units{units[0]}_{units[1]}",
         histogram_freq=1,
     )
     es_cb = tf.keras.callbacks.EarlyStopping(
@@ -84,7 +85,8 @@ def train_lstm(
           metrics=["accuracy"],
       )
       tb_cb = tf.keras.callbacks.TensorBoard(
-          log_dir=PLOTS_DIR / f"lstm_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}",
+          log_dir=PLOTS_DIR /
+             f"lstm_tb_lr{lr}_units{units[0]}_{units[1]}",
           histogram_freq=1,
       )
       es_cb = tf.keras.callbacks.EarlyStopping(

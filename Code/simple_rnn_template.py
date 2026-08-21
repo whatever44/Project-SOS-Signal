@@ -32,7 +32,7 @@ def train_simple_rnn(
         loss="binary_crossentropy",
         metrics=["accuracy"],
     )
-    log_dir = Path("logs") / f"rnn_tb_{datetime.datetime.now():%Y%m%d-%H%M%S}"
+    log_dir = Path("logs") / f"rnn_tb_lr{lr}_units{units[0]}_{units[1]}"
     os.makedirs(log_dir, exist_ok=True)
     tb_cb = tf.keras.callbacks.TensorBoard(log_dir=str(log_dir), histogram_freq=1)
     es_cb = tf.keras.callbacks.EarlyStopping(
